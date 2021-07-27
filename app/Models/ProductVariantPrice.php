@@ -6,5 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductVariantPrice extends Model
 {
-
+  public function product_variant()
+  {
+    return $this->belongsTo(ProductVariant::class);
+  }
 }

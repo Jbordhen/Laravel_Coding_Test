@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Pagination\Paginator;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantPrice;
 use App\Models\Variant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -15,9 +17,37 @@ class ProductController extends Controller
      *
      * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\Http\Response|\Illuminate\View\View
      */
-    public function index()
+    public function index(Request $request)
     {
-        return view('products.index');
+        // dd($request);
+        $title = $request->title ?? null;
+        $starting_price = $request->price_from ?? null;
+        $ending_price = $request->price_to ?? null;
+        $date = $request->date ?? null;
+        DB::enableQueryLog();
+        $query = Product::with('product_images', 'product_variants', 'product_variant_prices');
+
+        if ($title) {
+            $query = $query->where('title', 'like', '%' . $title . '%');
+        }
+        if ($starting_price) {
+            $query = $query->whereHas('product_variant_prices', function ($query) use ($starting_price) {
+                $query->where('price', '>=', $starting_price);
+            });
+        }
+
+        if ($ending_price) {
+            $query = $query->whereHas('product_variant_prices', function ($query) use ($ending_price) {
+                $query->where('price', '<=', $ending_price);
+            });
+        }
+
+        if ($date) {
+            $query = $query->whereDate('created_at', '=', $date);
+        }
+        $products = $query->latest()->paginate(3);
+        dd(DB::getQueryLog());
+        return view('products.index')->with(['products' => $products, 'title' => $title, 'starting_price' => $starting_price, 'ending_price' => $ending_price, 'date' => $date]);
     }
 
     /**
@@ -39,7 +69,6 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-
     }
 
 
@@ -51,7 +80,6 @@ class ProductController extends Controller
      */
     public function show($product)
     {
-
     }
 
     /**
@@ -63,7 +91,7 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $variants = Variant::all();
-        return view('products.edit', compact('variants'));
+        return view('products.edit', compact('variants', 'product'));
     }
 
     /**
